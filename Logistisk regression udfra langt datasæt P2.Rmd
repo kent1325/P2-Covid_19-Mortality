@@ -1,0 +1,52 @@
+```{r}
+library(purrr)
+library(tidyr) 
+library(dplyr)
+#Vi/man laver et "langt" datasæt
+#DataDK160321 er datasættet med den sidste række (sum) fjernet
+binary_dat1 = pmap_dfr(DataDK160321, 
+                      function(interval, tot_deaths, infected, infected_male,infected_fem, male_deaths, female_deaths,...) {
+                           data.frame(interval = interval,
+                                      infected = c(rep(1, infected),
+                                                rep(0, 0)),
+                                      dead = c(rep(1, tot_deaths),
+                                                rep(0, infected - tot_deaths)),
+                                      gender = c(rep("Male", male_deaths),
+                                                rep("Female", female_deaths),
+                                                rep("Male",infected_male-male_deaths),
+                                                rep("Female",infected_fem-female_deaths)))
+                                     
+                      }
+)
+```
+```{r}
+#vi/man laver alle variable til "factors"/kategoriske variable:
+binary_dat1$interval <- factor(binary_dat1$interval)
+binary_dat1$infected <- factor(binary_dat1$infected)
+binary_dat1$dead <- factor(binary_dat1$dead)
+binary_dat1$gender <- factor(binary_dat1$gender)
+summary(binary_dat1)
+```
+```{r}
+#nulmodellen
+fit.glm00 <- glm(dead ~ 1, family = binomial(link = "logit"), data=binary_dat1)
+summary(fit.glm00)
+#model med "død" som responsvariabel, aldersgruppe som forklarende variabel
+fit.glm01 <- glm(dead ~ interval, family = binomial(link = "logit"), data=binary_dat1)
+summary(fit.glm01)
+#model med "død" som responsvariabel, og hhv aldersgruppe og køn som forklarende variable
+fit.glm02 <- glm(dead ~ interval + gender, family = binomial(link = "logit"), data=binary_dat1)
+summary(fit.glm02)
+#udvidelse af fit.glm02, hvor sammenspillet ml. aldersgruppe og køn medtages
+fit.glm03 <- glm(dead ~ interval * gender, family = binomial(link = "logit"), data=binary_dat1)
+summary(fit.glm03)
+```
+```{r}
+#log-ratio tests, hvorved modellerne sammenlignes
+install.packages("lmtest")
+library(lmtest)
+lrtest (fit.glm00, fit.glm01)
+lrtest (fit.glm01, fit.glm02)
+lrtest (fit.glm02, fit.glm03)
+```
+
